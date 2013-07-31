@@ -56,7 +56,7 @@ public class PourStatusFragment extends ListFragment {
   private static final int AUTH_DRINKER_REQUEST = 1;
 
   private double mTargetVolumeMl = 0.0;
-  private double mCurrentVolumeMl = 0.0;
+  public double mCurrentVolumeMl = 0.0;
 
   private KegbotCore mCore;
 
@@ -90,6 +90,10 @@ public class PourStatusFragment extends ListFragment {
       }
     }
   };
+  public double getCurrentMl()
+  {
+	  return mCurrentVolumeMl;
+  }
 
   /**
    * After this much inactivity, the "pour automatically ends" dialog is shown.
@@ -217,7 +221,7 @@ public class PourStatusFragment extends ListFragment {
     }
   }
 
-  public void updateWithFlow(final Flow flow) {
+  public void updateWithFlow(Flow flow) {
     Preconditions.checkNotNull(flow, "null flow given to updateWithFlow()");
     mFlow = flow;
 

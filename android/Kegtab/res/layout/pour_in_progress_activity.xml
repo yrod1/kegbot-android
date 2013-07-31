@@ -67,23 +67,20 @@
                 android:lines="3"
                 android:maxLength="140"
                 android:scrollHorizontally="false" />
-
-            <Button
-                android:id="@+id/pourEndButton"
-                style="@style/mediumButton"
-                android:layout_below="@+id/shoutText"
-                android:layout_toRightOf="@+id/pourDrinkerImage"
-                android:layout_alignBottom="@+id/pourDrinkerImage"
-                android:text="Done Pouring!"/>
         </RelativeLayout>
 
-        <fragment
-            android:id="@+id/camera"
+        <Button
+            android:id="@+id/pourEndButton"
+            style="@style/mediumButton"
+            android:text="Done Pouring!" />
+
+        <Button
+            android:id="@+id/stopPour12oz"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            class="org.kegbot.app.camera.CameraFragment"
-            tools:layout="@layout/camera_fragment_layout" >
-        </fragment>
+            style="@style/mediumButton"
+            android:text="Stop Pour At 12oz!" />
+
     </LinearLayout>
 
 </LinearLayout>

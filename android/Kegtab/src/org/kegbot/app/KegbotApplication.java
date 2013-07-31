@@ -23,7 +23,7 @@ public class KegbotApplication extends Application {
   @Override
   public void onCreate() {
     super.onCreate();
-    Crashlytics.start(this);
+//    Crashlytics.start(this);
     Log.i(TAG, "Kegbot starting.");
 
     final String userAgent = Utils.getUserAgent(getApplicationContext());

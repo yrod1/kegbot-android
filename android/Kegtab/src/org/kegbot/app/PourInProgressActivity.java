@@ -18,17 +18,18 @@
 package org.kegbot.app;
 
 import java.util.List;
+
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.concurrent.GuardedBy;
 
-import org.kegbot.app.camera.CameraFragment;
+//import org.kegbot.app.camera.CameraFragment;
 import org.kegbot.app.config.AppConfiguration;
 import org.kegbot.app.event.FlowUpdateEvent;
-import org.kegbot.app.event.PictureDiscardedEvent;
-import org.kegbot.app.event.PictureTakenEvent;
+//import org.kegbot.app.event.PictureDiscardedEvent;
+//import org.kegbot.app.event.PictureTakenEvent;
 import org.kegbot.app.util.ImageDownloader;
 import org.kegbot.core.AuthenticationManager;
 import org.kegbot.core.Flow;
@@ -47,6 +48,7 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v13.app.FragmentStatePagerAdapter;
@@ -96,7 +98,7 @@ public class PourInProgressActivity extends CoreActivity {
   private AppConfiguration mConfig;
   private ImageDownloader mImageDownloader;
 
-  private CameraFragment mCameraFragment;
+//  private CameraFragment mCameraFragment;
 
   private AlertDialog mIdleDetectedDialog;
 
@@ -111,6 +113,8 @@ public class PourInProgressActivity extends CoreActivity {
   private TextView mShoutText;
   private Button mDoneButton;
   private ViewPager mTapPager;
+  private Button mDone12ozButton;
+  private PourStatusFragment frag; 
 
   private final Object mTapsLock = new Object();
 
@@ -124,27 +128,27 @@ public class PourInProgressActivity extends CoreActivity {
 
   private Set<Flow> mActiveFlows = Sets.newLinkedHashSet();
 
-  @Subscribe
-  public void onPictureTakenEvent(PictureTakenEvent event) {
-    final String filename = event.getFilename();
-    Log.d(TAG, "Got photo: " + filename);
-    final Flow flow = getCurrentlyFocusedFlow();
-    if (flow != null) {
-      Log.d(TAG, "  - attached to flow: " + flow);
-      flow.addImage(filename);
-    }
-  }
+//  @Subscribe
+//  public void onPictureTakenEvent(PictureTakenEvent event) {
+//    final String filename = event.getFilename();
+//    Log.d(TAG, "Got photo: " + filename);
+//    final Flow flow = getCurrentlyFocusedFlow();
+//    if (flow != null) {
+//      Log.d(TAG, "  - attached to flow: " + flow);
+//      flow.addImage(filename);
+//    }
+//  }
 
-  @Subscribe
-  public void onPictureDiscardedEvent(PictureDiscardedEvent event) {
-    final String filename = event.getFilename();
-    Log.d(TAG, "Discarded photo: " + filename);
-    final Flow flow = getCurrentlyFocusedFlow();
-    if (flow != null) {
-      Log.d(TAG, "  - remove from flow: " + flow);
-      flow.removeImage(filename);
-    }
-  }
+//  @Subscribe
+//  public void onPictureDiscardedEvent(PictureDiscardedEvent event) {
+//    final String filename = event.getFilename();
+//    Log.d(TAG, "Discarded photo: " + filename);
+//    final Flow flow = getCurrentlyFocusedFlow();
+//    if (flow != null) {
+//      Log.d(TAG, "  - remove from flow: " + flow);
+//      flow.removeImage(filename);
+//    }
+//  }
 
   @Subscribe
   public void onFlowUpdatEvent(FlowUpdateEvent event) {
@@ -166,7 +170,7 @@ public class PourInProgressActivity extends CoreActivity {
   private final ViewPager.OnPageChangeListener mPageChangeListener = new ViewPager.OnPageChangeListener() {
     @Override
     public void onPageSelected(int position) {
-      PourStatusFragment frag = (PourStatusFragment) mPouringTapAdapter.getItem(position);
+      frag = (PourStatusFragment) mPouringTapAdapter.getItem(position);
       final KegTap tap = frag.getTap();
       Log.d(TAG, "Swiped to tap: " + tap.getMeterName());
       updateControlsForFlow(getCurrentlyFocusedFlow());
@@ -195,13 +199,13 @@ public class PourInProgressActivity extends CoreActivity {
         tap = mTaps.get(position);
       }
 
-      final PourStatusFragment frag = new PourStatusFragment();
-      frag.setTap(tap);
+      final PourStatusFragment fragg = new PourStatusFragment();
+      fragg.setTap(tap);
       final Flow flow = mFlowManager.getFlowForMeterName(tap.getMeterName());
       if (flow != null) {
-        frag.updateWithFlow(flow);
+        fragg.updateWithFlow(flow);
       }
-      return frag;
+      return fragg;
     }
 
     @Override
@@ -265,6 +269,7 @@ public class PourInProgressActivity extends CoreActivity {
     mClaimPourButton = (Button) findViewById(R.id.claimPourButton);
     mDrinkerName = (TextView) findViewById(R.id.pourDrinkerName);
     mDoneButton = (Button) findViewById(R.id.pourEndButton);
+    mDone12ozButton = (Button) findViewById(R.id.stopPour12oz);
     mDrinkerImage = (ImageView) findViewById(R.id.pourDrinkerImage);
     mShoutText = (TextView) findViewById(R.id.shoutText);
 
@@ -283,34 +288,32 @@ public class PourInProgressActivity extends CoreActivity {
         startActivityForResult(intent, REQUEST_AUTH_DRINKER);
       }
     });
-
+    mDone12ozButton.setOnClickListener(new OnClickListener() {
+    	@Override
+		public void onClick(View v)
+    	{
+    		final Flow flow = getCurrentlyFocusedFlow();
+    		
+    		new AsyncTask<Void, Void, Void>() {
+    			@Override
+    			protected Void doInBackground(Void... params) {
+    				while (flow.getVolumeMl() < 355.0);
+    	    		
+    	    		stopPour();
+    	    		
+    				return null;
+    			}
+			}.execute();
+			
+			mDone12ozButton.setEnabled(false);
+    	}
+    });
     mDoneButton.setOnClickListener(new OnClickListener() {
       @Override
       public void onClick(View v) {
-        final FlowManager flowManager = mCore.getFlowManager();
-        final Flow flow = getCurrentlyFocusedFlow();
-        if (flow == null) {
-          return;
-        }
-        Log.d(TAG, "Done button pressed, ending flow " + flow.getFlowId());
-        flowManager.endFlow(flow);
-
-        // If we're finishing a non-dormant flow, and other dormant flows
-        // exist, assume those were started optimistically and finish them
-        // now.
-        if (flow.getVolumeMl() > 0) {
-          final AppConfiguration config = mCore.getConfiguration();
-          final long minVolume = config.getMinimumVolumeMl();
-          for (final Flow suspectFlow : flowManager.getAllActiveFlows()) {
-            if (suspectFlow.getVolumeMl() < minVolume) {
-              Log.d(TAG, "Also ending dormant flow: " + suspectFlow.getFlowId());
-              flowManager.endFlow(suspectFlow);
-            }
-          }
-        }
+        stopPour();
       }
     });
-
     mShoutText = (EditText) findViewById(R.id.shoutText);
     mShoutText.addTextChangedListener(new TextWatcher() {
       @Override
@@ -333,7 +336,7 @@ public class PourInProgressActivity extends CoreActivity {
       }
     });
 
-    mCameraFragment = (CameraFragment) getFragmentManager().findFragmentById(R.id.camera);
+//    mCameraFragment = (CameraFragment) getFragmentManager().findFragmentById(R.id.camera);
 
     AlertDialog.Builder builder = new AlertDialog.Builder(this);
     builder.setMessage("Hey, are you still pouring?").setCancelable(false).setPositiveButton(
@@ -358,6 +361,26 @@ public class PourInProgressActivity extends CoreActivity {
     mIdleDetectedDialog = builder.create();
 
     refreshFlows();
+  }
+  private void stopPour()
+  {
+  	final FlowManager flowManager = mCore.getFlowManager();
+  	final Flow flow = getCurrentlyFocusedFlow();
+  	if (flow == null) {
+  		return;
+  	}
+  	Log.d(TAG, "Done button pressed, ending flow " + flow.getFlowId());
+  	flowManager.endFlow(flow);
+  	if (flow.getVolumeMl() > 0) {
+  		final AppConfiguration config = mCore.getConfiguration();
+  		final long minVolume = config.getMinimumVolumeMl();
+  		for (final Flow suspectFlow : flowManager.getAllActiveFlows()) {
+  			if (suspectFlow.getVolumeMl() < minVolume) {
+  				Log.d(TAG, "Also ending dormant flow: " + suspectFlow.getFlowId());
+  				flowManager.endFlow(suspectFlow);
+  			}
+  		}
+  	}
   }
 
   /** Returns the currently-focused {@link Flow}, or {@code null}. */
@@ -446,7 +469,7 @@ public class PourInProgressActivity extends CoreActivity {
       updateControlsForFlow(flow);
       if (flow.getImages().isEmpty()) {
         if (mConfig.getEnableAutoTakePhoto()) {
-          mCameraFragment.schedulePicture();
+//          mCameraFragment.schedulePicture();
         }
       }
     }
@@ -568,7 +591,7 @@ public class PourInProgressActivity extends CoreActivity {
       mActiveFlows.remove(oldFlow);
     }
 
-    mCameraFragment.setEnabled(!mActiveFlows.isEmpty());
+//    mCameraFragment.setEnabled(!mActiveFlows.isEmpty());
 
     long largestIdleTime = Long.MIN_VALUE;
     for (final Flow flow : mActiveFlows) {
@@ -628,7 +651,7 @@ public class PourInProgressActivity extends CoreActivity {
       mFlowManager.endFlow(flow);
     }
     cancelIdleWarning();
-    mCameraFragment.cancelPendingPicture();
+//    mCameraFragment.cancelPendingPicture();
   }
 
   private void sendIdleWarning() {
